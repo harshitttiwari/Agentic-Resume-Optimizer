@@ -4,6 +4,10 @@ AI-based resume optimization project using LangGraph, Groq LLM, semantic skill m
 
 This project is a personal/basic deployment prototype. It is designed to be clean, explainable, and easy to run locally.
 
+![Agentic Resume Optimizer workflow graph](graph/workflow.png)
+
+The image above is the exact project graph rendered from [graph/workflow.png](graph/workflow.png).
+
 ---
 
 ## Features
@@ -34,14 +38,3 @@ This project is a personal/basic deployment prototype. It is designed to be clea
 - ReportLab
 - Pydantic
 - JSON file caching
-
----
-
-## Workflow
-
-The exact graph used by the project is rendered below from [graph/workflow.png](graph/workflow.png).
-
-![Agentic Resume Optimizer workflow graph](graph/workflow.png)
-
-This is the real workflow image, not a recreated flow diagram.
-
