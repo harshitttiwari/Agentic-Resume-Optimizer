@@ -37,100 +37,11 @@ This project is a personal/basic deployment prototype. It is designed to be clea
 
 ---
 
-## Project Flow
+## Workflow
 
-```text
-Resume Upload
-    ↓
-Resume Parser
-    ↓
-JD Analyzer
-    ↓
-Skill Matcher
-    ↓
-ATS Scorer
-    ↓
-Gap Analyzer
-    ↓
-Resume Rewriter
-    ↓
-Truth Checker
-    ↓
-Quality Reviewer
-    ↓
-Export if safe
+The exact graph used by the project is rendered below from [graph/workflow.png](graph/workflow.png).
 
-## 🏗️ System Architecture
+![Agentic Resume Optimizer workflow graph](graph/workflow.png)
 
-### Workflow Overview
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        AGENTIC WORKFLOW                              │
-│                    (LangGraph 1.0+ StateGraph)                        │
-└─────────────────────────────────────────────────────────────────────┘
-
-  Resume Input              Job Description Input
-       │                            │
-       └────────────────┬───────────┘
-                        │
-                   ┌────▼─────┐
-                   │  PARSE    │  Node 1: Extract resume structure
-                   │  RESUME   │  (cached by SHA-256 hash)
-                   └────┬─────┘
-                        │
-                   ┌────▼─────┐
-                   │ ANALYZE   │  Node 2: Extract job requirements
-                   │ JOB DESC  │  (cached by SHA-256 hash)
-                   └────┬─────┘
-                        │
-                   ┌────▼───────────┐
-                   │ SKILL MATCHER   │  Node 3: Semantic matching
-                   │ (Embeddings +   │  - Sentence Transformers
-                   │  LLM Fallback)  │  - Adaptive thresholds
-                   └────┬───────────┘  - Evidence collection
-                        │
-                   ┌────▼──────────┐
-                   │ ATS SCORER     │  Node 4: Calculate compatibility
-                   │ (Weighted:     │  - 60% skill coverage
-                   │  60+25+15)     │  - 25% required skills
-                   └────┬──────────┘  - 15% evidence confidence
-                        │              - Penalties for missing skills
-                   ┌────▼─────┐
-                   │GAP        │  Node 5: Identify missing skills
-                   │ANALYZER   │  Generate recommendations
-                   └────┬─────┘
-                        │
-       ┌─────────────────┴──────────────────┐
-       │                                    │
-  ┌────▼───────────┐              ┌────────▼────────┐
-  │ RESUME REWRITER │  Retry Loop  │ QUALITY REVIEW  │
-  │ (ATS Optimize)  │◄─────────────│ (Multi-checks)  │
-  └────┬───────────┘  (up to 3x)   └────────┬────────┘
-       │                                    │
-  ┌────▼─────────────┐                     │
-  │ TRUTH CHECKER    │◄────────────────────┘
-  │ (Hallucination   │  Quality issues?
-  │  Detection)      │  Try rewrite again
-  └────┬─────────────┘
-       │
-  ┌────▼─────────────────────────┐
-  │ Decision Node:                │
-  │ - Truthful + Quality OK?      │◄─────┐
-  │   → Export                    │      │
-  │ - Hallucination detected?     │      │
-  │   → Retry Rewrite (Loop)      │      │
-  │ - Quality issues?             │      │
-  │   → Retry Rewrite (Loop)      │──────┘
-  └────┬─────────────────────────┘
-       │
-  ┌────▼──────────────┐
-  │ FINAL EXPORT      │
-  │ + Metrics Report  │
-  │ + ATS Comparison  │
-  │ + Skill Evidence  │
-  └────┬──────────────┘
-       │
-  Optimized Resume + Full Analysis Bundle
-```
+This is the real workflow image, not a recreated flow diagram.
 
