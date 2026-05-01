@@ -2,8 +2,6 @@
 
 AI-powered resume optimization tool built with LangGraph and Streamlit. It parses a resume, analyzes the job description, matches skills, scores ATS fit, checks for unsupported claims, and rewrites the resume for a target role.
 
-This project is designed to be easy to understand for beginners and easy to evaluate for recruiters who want to see a real workflow, measurable output, and quality checks.
-
 ![Agentic Resume Optimizer workflow graph](graph/workflow.png)
 
 The image above is the exact project graph rendered from [graph/workflow.png](graph/workflow.png).
@@ -25,9 +23,7 @@ Give it a resume, a job description, and a target role. The app then:
 
 ## Why This Matters
 
-For beginners, this project shows how a multi-step AI system is assembled from smaller, testable nodes instead of one large prompt.
-
-For recruiters, it demonstrates practical software engineering skills:
+This project shows how a multi-step AI system is assembled from smaller, testable nodes instead of one large prompt and it also demonstrates practical software engineering skills:
 
 - Real workflow orchestration with LangGraph.
 - Clear input validation and output checks.
@@ -40,7 +36,7 @@ For recruiters, it demonstrates practical software engineering skills:
 - Upload resume in PDF, DOCX, or TXT format
 - Paste job description and target role
 - Parse resume into structured JSON
-- Analyze job description into required skills, preferred skills, tools, and keywords
+- Analyze job description into required skills, preferred       skills, tools, and keywords
 - Match skills using semantic embeddings
 - Generate ATS score with explainable breakdown
 - Rewrite resume for ATS alignment
@@ -116,14 +112,14 @@ This keeps the system understandable, debuggable, and easier to trust.
 5. Click Optimize Resume.
 6. Review the ATS score, keyword coverage, skill gaps, quality checks, and final resume.
 
-## Beginner Notes
+## Understanding the Analysis
 
 - The app is not only rewriting text. It is building a structured analysis first, then using that analysis to guide the rewrite.
 - The ATS score is a compatibility signal, not a guarantee of interview success.
 - If the truth checker or quality reviewer fails, the resume is treated as a draft and should be reviewed manually.
 - The workflow image at the top is the real graph used by the project, not a simplified illustration.
 
-## Recruiter Notes
+## Technical Highlights
 
 - The output includes both the optimized resume and the reasoning behind the changes.
 - The project is focused on transparent evaluation rather than hidden automation.
