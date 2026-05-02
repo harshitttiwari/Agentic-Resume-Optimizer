@@ -1,141 +1,220 @@
 # Agentic Resume Optimizer
 
-AI-powered resume optimization tool built with LangGraph and Streamlit. It parses a resume, analyzes the job description, matches skills, scores ATS fit, checks for unsupported claims, and rewrites the resume for a target role.
+![LangGraph Workflow](workflow.png)
 
-![Agentic Resume Optimizer workflow graph](graph/workflow.png)
-
-The image above is the exact project graph rendered from [graph/workflow.png](graph/workflow.png).
+A compact, safety-first resume tailoring system built with LangGraph and Groq. It parses a resume, extracts JD requirements, matches skills deterministically, rewrites the resume with an LLM, validates every claim and metric, and exports only when the output is safe.
 
 ---
 
-## What It Does
+## What Problem Does This Solve
 
-Give it a resume, a job description, and a target role. The app then:
+Most resume tools either blindly rewrite with an LLM (hallucination risk) or do simple keyword stuffing (no intelligence). This project solves both:
 
-1. Parses the resume into structured content.
-2. Analyzes the job description for required and preferred skills.
-3. Matches skills using semantic search and LLM-backed reasoning.
-4. Calculates an ATS-style score with a breakdown.
-5. Identifies missing skills and content gaps.
-6. Rewrites the resume to better fit the role.
-7. Checks for hallucinations and missing metric preservation.
-8. Exports the final result only when the quality checks are acceptable.
-
-## Why This Matters
-
-This project shows how a multi-step AI system is assembled from smaller, testable nodes instead of one large prompt and it also demonstrates practical software engineering skills:
-
-- Real workflow orchestration with LangGraph.
-- Clear input validation and output checks.
-- Explainable ATS scoring instead of a black-box result.
-- Resume rewriting with safety checks before export.
-- Local, reproducible execution with a simple Streamlit front end.
-
-## Core Features
-
-- Upload resume in PDF, DOCX, or TXT format
-- Paste job description and target role
-- Parse resume into structured JSON
-- Analyze job description into required skills, preferred       skills, tools, and keywords
-- Match skills using semantic embeddings
-- Generate ATS score with explainable breakdown
-- Rewrite resume for ATS alignment
-- Check for hallucinated or unsupported content
-- Validate whether important metrics are preserved
-- Show before/after keyword coverage comparison
-- Export resume only when quality checks pass
+- **Hallucination problem** — truth check catches invented claims before export
+- **Metric loss problem** — regex-based metric preservation catches dropped numbers
+- **Overfit problem** — works across AI/ML, finance, business, marketing, design resumes
+- **Black box problem** — every match, score, and validation decision is explainable
 
 ---
 
-## How The Workflow Works
+## What Makes It Different
 
-The graph is intentionally linear at the start and guarded at the end:
+| Feature | This Project | Typical Resume Tools |
+|---|---|---|
+| LLM used only where needed | ✅ | ❌ LLM for everything |
+| Deterministic skill matching | ✅ | ❌ Embedding-based only |
+| Hallucination gate before export | ✅ | ❌ |
+| Metric preservation validation | ✅ | ❌ |
+| Repair pass with targeted feedback | ✅ | ❌ |
+| LangGraph agentic workflow | ✅ | ❌ |
+| Structured JSON I/O for all LLM calls | ✅ | ❌ |
+| No domain-specific hardcoding | ✅ | ❌ |
 
-- Resume upload and parsing happen first.
-- Job description analysis and skill matching run next.
-- ATS scoring and gap analysis produce the main comparison data.
-- Resume rewriting improves the draft.
-- Truth checking and quality review decide whether the resume is safe to export.
+---
 
-This keeps the system understandable, debuggable, and easier to trust.
+## Architecture
+
+```
+app.py          →  Streamlit UI
+pipeline.py     →  LangGraph graph orchestration
+llm.py          →  Groq client, prompts, JSON parsing
+parser.py       →  File loading, validation, resume parsing, JD analysis
+matcher.py      →  Deterministic skill matching, ATS scoring, gap report
+validator.py    →  Truth check, metric preservation, export gate
+exporter.py     →  DOCX, PDF, TXT export
+log.py          →  Centralized logger
+workflow.py     →  LangGraph flowchart renderer
+```
+
+---
+
+## LangGraph Workflow
+
+```
+load_validate → parse_analyze → match_score → rewrite → validate
+                                                              │
+                                              ┌───────────────┴──────────────┐
+                                         needs_repair                    all_clear
+                                              │                               │
+                                           repair                          export
+                                              │
+                                           validate ──────────────────► export
+```
+
+**Nodes and what they do:**
+
+| Node | Responsibility |
+|---|---|
+| `load_validate` | Load PDF/DOCX/TXT, validate inputs |
+| `parse_analyze` | LLM parses resume + analyzes JD into structured JSON |
+| `match_score` | Deterministic skill matching, baseline ATS score |
+| `rewrite` | LLM rewrites resume with structured JSON prompt |
+| `validate` | Truth check, metric check, quality check |
+| `repair` | One targeted repair pass if validation fails |
+| `export` | Exports only if all safety checks pass |
+
+**Conditional routing:** after `validate`, the graph decides autonomously — repair or export. `repair_done` flag prevents infinite loops.
+
+---
+
+## How Skill Matching Works
+
+No embeddings. No ML models for matching. Pure deterministic Python:
+
+1. **Exact match** — direct term or variant found in resume text
+2. **Token stem overlap** — stemmed tokens of skill match stemmed tokens in evidence units
+3. **Fuzzy ratio** — `SequenceMatcher` at ≥ 0.82 threshold
+4. **Acronym matching** — `ML` matches `Machine Learning`, `FastAPI` matches via embedded acronym
+5. **Semantic aliases** — `vector databases` matches if `ChromaDB`, `Pinecone`, or `FAISS` is present
+
+All five tiers are explainable in an interview without referencing any model.
+
+---
+
+## ATS Score Formula
+
+```
+ATS = (matched/total × 50) + (required_matched/required_total × 35) + (evidence_quality × 15) − penalty
+```
+
+- **50%** — overall keyword coverage
+- **35%** — required skills coverage (weighted higher)
+- **15%** — evidence quality (how strongly each skill appears)
+- **Penalty** — up to −10 for missing required skills
+
+---
+
+## Safety Checks
+
+| Check | Method | Blocks Export |
+|---|---|---|
+| Hallucination detection | LLM truth check + false-positive filter | ✅ |
+| Metric preservation | Regex extraction + key comparison | ✅ |
+| Quality gate | Length, weak phrases, ATS threshold | ✅ |
+| Added summary removal | Line-scan heading detection | No (silent fix) |
+
+Export only happens when all three blocking checks pass. Otherwise output is marked `draft_needs_review`.
+
+---
+
+## Models Used
+
+| Task | Model | Reason |
+|---|---|---|
+| Resume rewriting | `llama-3.3-70b-versatile` | Quality matters most here |
+| Parsing, JD analysis, truth check | `llama-3.1-8b-instant` | Fast, high RPD, sufficient for structured JSON |
+
+LLM calls are cached with `lru_cache` — repeated identical inputs do not cost tokens.
+
+---
 
 ## Tech Stack
 
-- Python
-- Streamlit
-- LangGraph
-- LangChain Groq
-- Sentence Transformers
-- PyMuPDF
-- python-docx
-- ReportLab
-- Pydantic
-- JSON file caching
-
-## Project Layout
-
-- `app_v2.py` - Streamlit user interface
-- `main.py` - orchestration entry point for the workflow
-- `graph/` - LangGraph workflow definition and diagram assets
-- `nodes/` - the individual pipeline steps
-- `utils/` - file loading, validation, logging, exporting, and helper utilities
-- `outputs/` - generated files and exports
-
-## Quick Start
-
-1. Clone the repository.
-2. Create and activate a virtual environment.
-3. Install dependencies with:
-
-	```bash
-	pip install -r requirements.txt
-	```
-
-4. Create a `.env` file and add your Groq API key:
-
-	```env
-	GROQ_API_KEY=your_key_here
-	```
-
-5. Start the Streamlit app:
-
-	```bash
-	streamlit run app_v2.py
-	```
-
-## How To Use
-
-1. Upload a resume in PDF, DOCX, or TXT format.
-2. Paste the full job description.
-3. Enter the target role.
-4. Choose the output format.
-5. Click Optimize Resume.
-6. Review the ATS score, keyword coverage, skill gaps, quality checks, and final resume.
-
-## Understanding the Analysis
-
-- The app is not only rewriting text. It is building a structured analysis first, then using that analysis to guide the rewrite.
-- The ATS score is a compatibility signal, not a guarantee of interview success.
-- If the truth checker or quality reviewer fails, the resume is treated as a draft and should be reviewed manually.
-- The workflow image at the top is the real graph used by the project, not a simplified illustration.
-
-## Technical Highlights
-
-- The output includes both the optimized resume and the reasoning behind the changes.
-- The project is focused on transparent evaluation rather than hidden automation.
-- The workflow is modular, so each step can be tested, improved, or replaced independently.
-- The quality gates reduce the chance of unsupported claims entering the final resume.
-
-## Output
-
-When the workflow passes quality checks, the app can export the final resume and supporting analysis artifacts. Generated files are written to the local outputs folder.
-
-## Environment
-
-The app expects a valid `GROQ_API_KEY` in the environment or `.env` file before running.
+| Layer | Technology |
+|---|---|
+| UI | Streamlit |
+| Orchestration | LangGraph |
+| LLM | Groq (LLaMA 3.3 70B + LLaMA 3.1 8B) |
+| LLM Client | LangChain-Groq |
+| PDF parsing | PyMuPDF (fitz) |
+| DOCX parsing/export | python-docx |
+| PDF export | ReportLab |
+| Environment | python-dotenv |
 
 ---
 
-## Summary
+## Quick Start
 
-This project is a compact but complete example of an AI-assisted resume optimization pipeline: structured parsing, semantic matching, ATS scoring, rewrite generation, and safety checks, all shown through an understandable workflow.
+**1. Clone and set up environment**
+```bash
+git clone <repo-url>
+cd agentic-resume-optimizer
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+**2. Configure environment variables**
+```env
+GROQ_API_KEY=your_key_here
+GROQ_MODEL_STRONG=llama-3.3-70b-versatile    # optional, this is the default
+GROQ_MODEL_FAST=llama-3.1-8b-instant         # optional, this is the default
+```
+
+**3. Run the app**
+```bash
+streamlit run app.py
+```
+
+**4. (Optional) View LangGraph flowchart**
+```bash
+pip install grandalf
+python workflow.py
+```
+Opens `workflow.png` in the project directory.
+
+---
+
+## How To Use
+
+1. Upload a resume — PDF, DOCX, or TXT
+2. Paste the full job description
+3. Enter the target role
+4. Choose export format — DOCX, PDF, or TXT
+5. Click **Optimize Resume**
+6. Review ATS score, matched/missing skills, truth check, metric preservation
+7. Download export if it passed all safety checks
+
+---
+
+## Project Structure
+
+```
+agentic-resume-optimizer/
+├── app.py            # Streamlit UI
+├── pipeline.py       # LangGraph graph
+├── llm.py            # Groq client + prompts
+├── parser.py         # File loading + parsing
+├── matcher.py        # Skill matching + ATS scoring
+├── validator.py      # Safety checks
+├── exporter.py       # File export
+├── log.py            # Logger
+├── workflow.py       # Flowchart renderer
+├── requirements.txt
+├── .env              # Not committed
+└── workflow.png      # Generated by workflow.py
+```
+
+---
+
+## Design Decisions
+
+**LLM only for language tasks** — parsing, rewriting, truth checking. Scoring, matching, metric validation, and export gating are all deterministic Python. Cheaper, faster, fully debuggable.
+
+**Structured JSON I/O** — every LLM call sends structured JSON input and expects JSON output. Reduces hallucination surface and makes outputs parseable without fragile string cleaning.
+
+**One repair pass maximum** — if the first rewrite regresses on metrics or ATS coverage, the graph routes to repair with explicit targeted feedback. No infinite loops.
+
+**No embedding models** — skill matching uses token stemming, variant generation, fuzzy ratio, and semantic aliases. Keeps dependencies minimal and matching logic fully explainable.
+
+**Export gate** — a low ATS score does not block export. Only hallucinations, missing metrics, and quality failures block it. A weak match is honest information, not a system failure.
